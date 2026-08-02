@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MULTIVIEW - Twitch & YouTube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E0E10;
+    --panel: #18181B;
+    --panel-raised: #1F1F23;
+    --panel-hover: #26262C;
+    --line: #2D2D32;
+    --text: #EFEFF1;
+    --muted: #ADADB8;
+    --primary: #9146FF;
+    --primary-hover: #772CE8;
+    --live: #EB0400;
+    --radius: 6px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--primary); color: #fff; }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--bg);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    flex-wrap: wrap;
+    height: 50px;
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  .wordmark svg {
+    color: var(--primary);
+    width: 20px;
+    height: 20px;
+  }
+
+  .add-form {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1;
+    min-width: 320px;
+    max-width: 500px;
+  }
+
+  .add-form input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-right: none;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: var(--radius) 0 0 var(--radius);
+    outline: none;
+    transition: border-color .15s, background .15s;
+    height: 32px;
+  }
+
+  .add-form input::placeholder { color: var(--muted); font-weight: 400; }
+  .add-form input:focus { border-color: var(--primary); background: #000; }
+
+  .add-form button {
+    background: var(--panel-raised);
+    color: var(--text);
+    border: 1px solid var(--line);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 0 16px;
+    height: 32px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .add-form button:hover { background: var(--panel-hover); }
+  .add-form input:focus + button { border-left-color: var(--line); }
+
+  .layout-picker {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 2px;
+    margin-left: auto;
+  }
+
+  .layout-picker button {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+
+  .layout-picker button.active { background: var(--panel-raised); }
+  .layout-picker button:hover:not(.active) { background: rgba(255,255,255,0.05); }
+
+  .chat-toggle {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 0 14px;
+    height: 32px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: background .15s;
+  }
+
+  .chat-toggle:hover { background: var(--primary-hover); }
+  .chat-toggle.active { background: var(--panel-raised); color: var(--text); border: 1px solid var(--line); }
+  .chat-toggle.active:hover { background: var(--panel-hover); }
+  .chat-toggle svg { width: 16px; height: 16px; }
+
+  .stage {
+    display: flex;
+    height: calc(100vh - 50px);
+  }
+
+  .grid-wrap {
+    flex: 1;
+    padding: 16px;
+    overflow: auto;
+  }
+
+  .grid {
+    display: grid;
+    gap: 16px;
+    height: 100%;
+  }
+
+  .tile {
+    position: relative;
+    background: #000;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-height: 180px;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .tile:hover {
+    border-color: var(--primary);
+    box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.5);
+    transform: translateY(-2px);
+  }
+
+  .tile iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #000;
+  }
+
+  .tile-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .tile:hover .tile-bar { opacity: 1; }
+
+  .platform-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+  }
+
+  .platform-icon.twitch { color: #a970ff; }
+  .platform-icon.youtube { color: #ff0000; }
+
+  .tile-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tile-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+  }
+
+  .tile-actions button {
+    background: rgba(0,0,0,0.6);
+    border: none;
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .tile-actions button svg { width: 16px; height: 16px; }
+  .tile-actions button:hover { background: var(--primary); transform: scale(1.05); }
+  .tile-actions button.remove-btn:hover { background: var(--live); }
+
+  .chat-panel {
+    width: 340px;
+    min-width: 340px;
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-panel.hidden { display: none; }
+
+  .chat-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 50px;
+  }
+
+  .chat-head span {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .chat-head select {
+    flex: 1;
+    background: var(--panel-raised);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .chat-head select:focus { border-color: var(--primary); }
+
+  .chat-frame-wrap { flex: 1; min-height: 0; background: var(--bg); }
+  .chat-frame-wrap iframe { width: 100%; height: 100%; border: none; }
+
+  .chat-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .empty-state {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 40px;
+  }
+
+  .empty-state-icon {
+    width: 64px; height: 64px;
+    background: var(--panel-raised);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--primary);
+    margin-bottom: -4px;
+  }
+
+  .empty-state-icon svg { width: 32px; height: 32px; }
+
+  .empty-state h1 { font-size: 24px; font-weight: 600; color: var(--text); }
+  .empty-state p { color: var(--muted); font-size: 14px; max-width: 440px; line-height: 1.6; }
+
+  .empty-state .examples {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 480px;
+    margin-top: 8px;
+  }
+
+  .empty-state .examples button {
+    background: var(--panel-raised);
+    border: none;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .empty-state .examples button svg { width: 14px; height: 14px; }
+  .empty-state .examples button:hover { background: var(--panel-hover); color: var(--primary); }
+
+  .empty-state .hint { margin-top: 16px; font-size: 12px; color: var(--muted); opacity: 0.7; }
+
+  @media (max-width: 760px) {
+    .stage { flex-direction: column; height: auto; }
+    .chat-panel { width: 100%; min-width: 0; height: 400px; border-left: none; border-top: 1px solid var(--line); }
+    header { height: auto; padding: 12px; gap: 12px; justify-content: space-between; }
+    .layout-picker { margin-left: 0; width: 100%; justify-content: center; }
+    .add-form { min-width: 100%; }
+    .wordmark { width: 100%; justify-content: center; margin-bottom: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>
+    </svg>
+    Multiview
+  </div>
+
+  <form class="add-form" id="addForm">
+    <input id="channelInput" type="text" placeholder="Add Twitch channel, or paste Twitch/YouTube URL..." autocomplete="off">
+    <button type="submit">Add Stream</button>
+  </form>
+
+  <div class="layout-picker" id="layoutPicker">
+    <button data-layout="auto" class="active">Auto</button>
+    <button data-layout="2x2">2×2</button>
+    <button data-layout="3x3">3×3</button>
+    <button data-layout="spotlight">Spotlight</button>
+  </div>
+
+  <button class="chat-toggle" id="chatToggle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+    Show Chat
+  </button>
+</header>
+
+<div class="stage">
+  <div class="grid-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="chat-panel hidden" id="chatPanel">
+    <div class="chat-head">
+      <span>Chat</span>
+      <select id="chatSelect"></select>
+    </div>
+    <div class="chat-frame-wrap" id="chatFrameWrap"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var channels = [];
+  var layout = 'auto';
+  var chatVisible = false;
+  var chatChannelKey = null;
+  var mutedSet = {};
+  var parentHost = window.location.hostname || 'localhost';
+
+  var grid = document.getElementById('grid');
+  var chatPanel = document.getElementById('chatPanel');
+  var chatToggle = document.getElementById('chatToggle');
+  var chatSelect = document.getElementById('chatSelect');
+  var chatFrameWrap = document.getElementById('chatFrameWrap');
+
+  var icons = {
+    muted: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>',
+    unmuted: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+    monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>',
+    twitch: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
+  };
+
+  function parseInput(raw){
+    var s = raw.trim();
+    if(!s) return null;
+
+    if (s.startsWith('tw:')) return s;
+    if (s.startsWith('yt:')) return s;
+
+    var ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=|live\/)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    var ytMatch = s.match(ytRegex);
+    if(ytMatch && ytMatch[1]) {
+      return 'yt:' + ytMatch[1];
+    }
+
+    s = s.replace(/^https?:\/\/(www\.)?twitch\.tv\//i, '');
+    s = s.split('/')[0].split('?')[0].split('#')[0];
+    s = s.replace(/[^a-zA-Z0-9_]/g, '');
+    if(s) {
+      return 'tw:' + s.toLowerCase();
+    }
+    return null;
+  }
+
+  function getStreamData(key){
+    if (key.startsWith('yt:')) return { platform: 'youtube', id: key.substring(3), icon: icons.youtube };
+    if (key.startsWith('tw:')) return { platform: 'twitch', id: key.substring(3), icon: icons.twitch };
+    return { platform: 'twitch', id: key, icon: icons.twitch };
+  }
+
+  function addChannel(raw){
+    var key = parseInput(raw);
+    if(!key) return;
+    if(channels.indexOf(key) !== -1) return;
+
+    channels.push(key);
+    mutedSet[key] = channels.length > 1;
+    if(!chatChannelKey) chatChannelKey = key;
+
+    syncHash();
+    render();
+  }
+
+  function removeChannel(key){
+    channels = channels.filter(function(c){return c !== key;});
+    delete mutedSet[key];
+    if(chatChannelKey === key) chatChannelKey = channels[0] || null;
+    syncHash();
+    render();
+  }
+
+  function toggleMute(key){
+    mutedSet[key] = !mutedSet[key];
+    render();
+  }
+
+  function syncHash(){
+    var hash = channels.join(',');
+    history.replaceState(null, '', hash ? ('#' + hash) : ' ');
+  }
+
+  function loadFromHash(){
+    var h = window.location.hash.replace('#','');
+    if(!h) return;
+    h.split(',').forEach(addChannel);
+  }
+
+  function getTileSrc(stream, isMuted) {
+    if (stream.platform === 'youtube') {
+      return 'https://www.youtube.com/embed/' + encodeURIComponent(stream.id) +
+             '?autoplay=1&mute=' + (isMuted ? '1' : '0') + '&playsinline=1&enablejsapi=1';
+    }
+    return 'https://player.twitch.tv/?channel=' + encodeURIComponent(stream.id) +
+           '&parent=' + encodeURIComponent(parentHost) +
+           '&muted=' + (isMuted ? 'true' : 'false') +
+           '&autoplay=true';
+  }
+
+  function getChatSrc(stream) {
+    if (stream.platform === 'youtube') {
+      return 'https://www.youtube.com/live_chat?v=' + encodeURIComponent(stream.id) +
+             '&embed_domain=' + encodeURIComponent(parentHost) + '&dark_theme=1';
+    }
+    return 'https://www.twitch.tv/embed/' + encodeURIComponent(stream.id) +
+           '/chat?parent=' + encodeURIComponent(parentHost) + '&darkpopout';
+  }
+
+  function applyLayoutStyle(){
+    var n = channels.length;
+    if(layout === '2x2'){
+      grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+      grid.style.gridTemplateRows = 'repeat(2, 1fr)';
+    } else if(layout === '3x3'){
+      grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+      grid.style.gridTemplateRows = 'repeat(3, 1fr)';
+    } else if(layout === 'spotlight'){
+      grid.style.gridTemplateColumns = n > 1 ? '2.5fr 1fr' : '1fr';
+      grid.style.gridTemplateRows = n > 1 ? 'repeat(' + Math.max(n-1,1) + ', 1fr)' : '1fr';
+    } else {
+      var cols = Math.ceil(Math.sqrt(n || 1));
+      grid.style.gridTemplateColumns = 'repeat(' + Math.max(cols,1) + ', 1fr)';
+      grid.style.gridTemplateRows = 'auto';
+    }
+  }
+
+  function tileGridArea(index){
+    if(layout === 'spotlight'){
+      if(index === 0) return 'grid-column:1; grid-row:1 / -1;';
+      return 'grid-column:2; grid-row:' + index + ';';
+    }
+    return '';
+  }
+
+  function render(){
+    if(channels.length === 0){
+      grid.style.display = 'block';
+      grid.innerHTML =
+        '<div class="empty-state">' +
+          '<div class="empty-state-icon">' + icons.monitor + '</div>' +
+          '<h1>Welcome to Multiview</h1>' +
+          '<p>Build your custom command center. Add Twitch channels or YouTube video URLs above to watch streams side-by-side in real time.</p>' +
+          '<div class="examples">' +
+            '<button data-ex="emiru">' + icons.twitch + ' emiru</button>' +
+            '<button data-ex="quin69">' + icons.twitch + ' quin69</button>' +
+            '<button data-ex="https://www.youtube.com/watch?v=jfKfPfyJRdk">' + icons.youtube + ' Lofi Girl (YT)</button>' +
+          '</div>' +
+          '<div class="hint">Channels are automatically saved in the URL so you can share your layout.</div>' +
+        '</div>';
+      grid.querySelectorAll('[data-ex]').forEach(function(btn){
+        btn.addEventListener('click', function(){ addChannel(btn.getAttribute('data-ex')); });
+      });
+    } else {
+      grid.style.display = 'grid';
+      applyLayoutStyle();
+      grid.innerHTML = channels.map(function(key, i){
+        var stream = getStreamData(key);
+        return '<div class="tile" style="' + tileGridArea(i) + '">' +
+          '<div class="tile-bar">' +
+            '<span class="platform-icon ' + stream.platform + '">' + stream.icon + '</span>' +
+            '<span class="tile-label">' + stream.id + '</span>' +
+            '<span class="tile-actions">' +
+              '<button data-mute="' + key + '" title="Toggle Audio">' + (mutedSet[key] ? icons.muted : icons.unmuted) + '</button>' +
+              '<button class="remove-btn" data-remove="' + key + '" title="Remove Stream">' + icons.close + '</button>' +
+            '</span>' +
+          '</div>' +
+          '<iframe src="' + getTileSrc(stream, mutedSet[key]) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen scrolling="no" frameborder="0"></iframe>' +
+        '</div>';
+      }).join('');
+
+      grid.querySelectorAll('[data-remove]').forEach(function(btn){
+        btn.addEventListener('click', function(){ removeChannel(btn.getAttribute('data-remove')); });
+      });
+      grid.querySelectorAll('[data-mute]').forEach(function(btn){
+        btn.addEventListener('click', function(){ toggleMute(btn.getAttribute('data-mute')); });
+      });
+    }
+
+    renderChat();
+  }
+
+  function renderChat(){
+    chatSelect.innerHTML = channels.map(function(key){
+      var stream = getStreamData(key);
+      var displayName = stream.platform === 'youtube' ? 'YT: ' + stream.id : stream.id;
+      return '<option value="' + key + '"' + (key === chatChannelKey ? ' selected' : '') + '>' + displayName + '</option>';
+    }).join('');
+
+    if(!chatVisible) return;
+
+    if(channels.length === 0){
+      chatFrameWrap.innerHTML = '<div class="chat-empty">Add a channel to connect to chat.</div>';
+      return;
+    }
+
+    if(!chatChannelKey || channels.indexOf(chatChannelKey) === -1) chatChannelKey = channels[0];
+
+    var stream = getStreamData(chatChannelKey);
+    chatFrameWrap.innerHTML = '<iframe src="' + getChatSrc(stream) + '" scrolling="no" frameborder="0"></iframe>';
+  }
+
+  document.getElementById('addForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var input = document.getElementById('channelInput');
+    addChannel(input.value);
+    input.value = '';
+  });
+
+  document.getElementById('layoutPicker').addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-layout]');
+    if(!btn) return;
+    layout = btn.getAttribute('data-layout');
+    Array.prototype.forEach.call(document.querySelectorAll('.layout-picker button'), function(b){
+      b.classList.toggle('active', b === btn);
+    });
+    render();
+  });
+
+  chatToggle.addEventListener('click', function(){
+    chatVisible = !chatVisible;
+    chatToggle.classList.toggle('active', chatVisible);
+    chatToggle.innerHTML = chatVisible ? icons.close + ' Close Chat' : icons.chat + ' Show Chat';
+    chatPanel.classList.toggle('hidden', !chatVisible);
+    renderChat();
+  });
+
+  chatSelect.addEventListener('change', function(){
+    chatChannelKey = chatSelect.value;
+    renderChat();
+  });
+
+  loadFromHash();
+  render();
+})();
+</script>
+
+</body>
+</html>
